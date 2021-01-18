@@ -1,1 +1,1 @@
-# LIU.TS is a collection of course assignments for Time Series
+LIU.TS is a collection of course assignments for Time Series
