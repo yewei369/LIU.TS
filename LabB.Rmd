@@ -1,0 +1,282 @@
+---
+title: "Computer Lab B"
+subtitle: "Time Series Analysis -- 732A62"
+author: "Jun Li"
+date: '2019-09-29'
+output: pdf_document
+---
+
+# Assignment 1. Computations with simulated data
+## a) <!--example 3.16-->
+$\phi_{33}=corr(x_{t+3}-\hat{x_{t+3}},x_t-\hat{x_t})$
+```{r,eval=TRUE,echo=FALSE}
+##Assignment 1 a)
+set.seed(12345)
+w=rnorm(100,0,1)
+x=rep(NA,100)
+x[1]=0
+x[2]=0
+x[3]=0
+for(i in 4:100) x[i]=0.8*x[i-1]-0.2*x[i-2]+0.1*x[i-3]+w[i]
+x0=x[1:97]
+x1=x[2:98]
+x2=x[3:99]
+x3=x[4:100]
+x3es=lm(x3~x1+x2,na.action=NULL)
+x3re=resid(x3es)
+x0es=lm(x0~x1+x2,na.action=NULL)
+x0re=resid(x0es)
+print(paste("The sample PACF is: ",cor(x3re,x0re),sep=""))
+print(paste("The R-generated PACF is: ",ARMAacf(ar=c(0.8,-0.2,0.1),ma=0,3,pacf=TRUE)[3],sep=""))
+print(paste("The theoretical PACF is: ",0.1,", the same as the third AR efficient",sep=""))
+```
+It shows all the three results are approximately the same.
+
+## b) <!--example NA-->
+```{r,eval=TRUE,echo=FALSE}
+##Assignment 1 b)
+set.seed(12345)
+sim<-arima.sim(list(ar=c(0.8,0.1)),n=100)
+fiyw<-ar(sim,order.max=2,aic=FALSE)
+coyw<-data.frame(ar1=c(fiyw$ar[1],sqrt(fiyw$asy.var.coef[1,1])),ar2=c(fiyw$ar[2],sqrt(fiyw$asy.var.coef[2,2])))
+dimnames(coyw)[[1]]=c("co","sd")
+print("Here comes the coefficients and its standard error from Yule_walker:")
+coyw
+fics<-arima(sim,order=c(2,0,0),method="CSS")
+cocs<-data.frame(ar1=c(fics$coef[1],sqrt(fics$var.coef[1,1])),ar2=c(fics$coef[2],sqrt(fics$var.coef[2,2])))
+dimnames(cocs)[[1]]=c("co","sd")
+print("Here comes the coefficients and its standard error from CSS:")
+cocs
+fiml<-arima(sim,order=c(2,0,0),method="ML")
+coml<-data.frame(ar1=c(fiml$coef[1],sqrt(fiml$var.coef[1,1])),ar2=c(fiml$coef[2],sqrt(fiml$var.coef[2,2])))
+dimnames(coml)[[1]]=c("co","sd")
+print("Here comes the coefficients and its standard error from ML:")
+coml
+print(paste("95% confidence interval for ar1 from ML:",fiml$coef[1]-2*sqrt(fiml$var.coef[1,1])," ~ ",fiml$coef[1]+2*sqrt(fiml$var.coef[1,1]),sep=""))
+print(paste("95% confidence interval for ar2 from ML:",fiml$coef[2]-2*sqrt(fiml$var.coef[2,2])," ~ ",fiml$coef[2]+2*sqrt(fiml$var.coef[2,2]),sep=""))
+```
+The results show that the Yule-Walker method gives the best estimates. And the theretical $\phi_2$ falls within the 95% confidence interval.   
+
+## c) <!--example 3.46-->
+$ARIMA(0,0,1)\times(0,0,1)_{12}$ is equivalent to \[x_t=w_t+\theta w_{t-1}+\Theta w_{t-12}+\Theta \theta w_{t-13}\]
+```{r,eval=TRUE,echo=FALSE}
+##Assignment 1 c)
+th<-rep(0,13)
+th[1]=0.3;th[12]=0.6;th[13]=0.3*0.6
+set.seed(12345)
+da<-arima.sim(list(ma=th),n=200)
+saacf<-acf(da,lag.max=24,plot=FALSE)
+sapacf<-pacf(da,lag.max=24,plot=FALSE)
+print("Here come the sample ACF and PACF plots:")
+plot(saacf,main="Sample ACF")
+plot(sapacf,main="Sample PACF")
+thacf<-ARMAacf(ar=0,ma=th,24)
+thpacf<-ARMAacf(ar=0,ma=th,24,pacf=TRUE)
+print("Here come the theretical ACF and PACF plots:")
+plot(thacf,main="Theoretical ACF",type="h")
+abline(h=0)
+plot(thpacf,main="Theoretical PACF",type="h")
+abline(h=0)
+```
+The pattern shown in theoretical plots is shared by sample plots that ACF and PACF have a seasonal behaviour of period 12 and the highest value at lag 12 and 13.
+
+## d) <!--example 3.25-->
+```{r,eval=TRUE,echo=FALSE,message=FALSE}
+##Assignment 1 d)
+th<-rep(0,13)
+th[1]=0.3;th[12]=0.6;th[13]=0.3*0.6
+set.seed(12345)
+da<-arima.sim(list(ma=th),n=200)
+print("Here comes the prediction from ARIMA function:")
+fi<-arima(da,order=c(0,0,1),seasonal=list(order=c(0,0,1),period=12),method="ML")
+xian<-predict(fi,n.ahead = 30)
+ts.plot(da,xian$pred,col=1:2,main="Trend")
+hi<-xian$pred+xian$se;lo<-xian$pred-xian$se
+xx<-c(time(hi),rev(time(hi)));yy<-c(lo,rev(hi))
+polygon(xx,yy,border=8,col=gray(0.6,alpha=0.2))
+lines(xian$pred,type="p",col=2)
+print("Here comes the prediction from GAUSSPR function:")
+library("kernlab")
+span<-1:200
+fu<-201:230
+fi<-gausspr(da,span,variance.model=TRUE)
+xian<-predict(fi,fu)
+plot(c(da,as.vector(xian)),main="Trend")
+```
+It seems like GAUSSPR function with default settings gives really bad prediction, comparing with professional ARIMA models in the first plot based on one standard error.
+
+
+## e) <!--example -->
+```{r,eval=TRUE,echo=FALSE}
+##Assignment 1 e)
+set.seed(12345)
+da<-arima.sim(list(ar=0.7,ma=0.5),n=50)
+fi<-arima(da[1:40],order=c(1,0,1),method="ML")
+xian<-predict(fi,n.ahead=10)
+
+ts.plot(da,xian$pred,col=1:2,type="p",main="Trend")
+hi<-xian$pred+2*xian$se;lo<-xian$pred-2*xian$se
+xx<-c(time(hi),rev(time(hi)));yy<-c(lo,rev(hi))
+polygon(xx,yy,border=8,col=gray(0.6,alpha=0.2))
+```
+As in the plot, the red points are predicted values and are all within the polygon area, which complys with the 95% confidence level. Therefore, the fitted model presents effective result.
+
+
+
+# Assignment 2. Visualization, detrending and residual analysis of Rhine data
+## a) <!--Example 1.25-->
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+##Assignment 2 a)
+library(astsa)
+xt<-ts(chicken)
+xtd<-diff(xt)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xt,lag.max=40)
+pacf(xt,lag.max=40)
+acf(xtd,lag.max=40)
+pacf(xtd,lag.max=40)
+```
+ACF plot of $x_t$ shows a quite slow decay, which denotes a needed difference. Therefore ACF and PACF of $\Delta x_t$ is necessarily ploted, where no apparent cutoff shown in neither plot while a seasonal behaviour detected. Thus, a $ARIMA(1,1,1)\times ARIMA(0,0,1)_{12}$ is suggested.
+
+
+## b)
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+##Assignment 2 b)
+print("Here comes the so2 plots:")
+xt<-ts(so2)
+xtd<-diff(xt)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xt,lag.max=40)
+pacf(xt,lag.max=40)
+acf(xtd,lag.max=40)
+pacf(xtd,lag.max=40)
+```
+ACF plot of $x_t$ shows a quite slow decay, which denotes a needed difference. Therefore ACF and PACF of $\Delta x_t$ is necessarily ploted, where an apparent cutoff shown in ACF plot after lag 1 and PACF tails off. Thus, a $ARIMA(0,1,1)$ is suggested.
+
+
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+print("Here comes the EQcount plots:")
+xt<-ts(EQcount)
+xtd<-diff(xt)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xt,lag.max=40)
+pacf(xt,lag.max=40)
+acf(xtd,lag.max=40)
+pacf(xtd,lag.max=40)
+```
+The original series shows a cut off in ACF plot after about 8 lags while no apparent cutoff detected in PACF. Even more, there is a seasonal behavious shown in PACF. Thus, a $ARIMA(0,0,8)\times ARIMA(0,0,1)_{12}$ is suggested.
+
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+print("Here comes the HCT plots:")
+xt<-ts(HCT)
+xtd<-diff(xt)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xt,lag.max=40)
+pacf(xt,lag.max=40)
+acf(xtd,lag.max=40)
+pacf(xtd,lag.max=40)
+```
+The original series shows a slow decay in ACF plot. While the first difference series shows a tail-off in ACF and cutoff in PACF after lag 10. Even a seasonal behaviour detected. Thus, a $ARIMA(6,1,0)\times ARIMA(1,0,0)_{12}$ is suggested.  
+
+
+# Assignment 3. Analysis of oil and gas time series
+## a)
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+##Assignment 3 a)
+xt<-ts(oil)
+xtlog<-log(xt)
+print("Here is the time plot of original and log-form series:")
+par(mfrow=c(1,2))
+plot(xt,main="Oil")  ##Time plot
+plot(xtlog,main="log(Oil)")
+print("Since the series data increases rapidly, log transformation is suggested.")
+xtlogd<-diff(xtlog)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xtlog,lag.max=40)
+pacf(xtlog,lag.max=40)
+acf(xtlogd,lag.max=40)
+pacf(xtlogd,lag.max=40)
+```
+From the above plots of ACF and PACF, it is shown that ACF of original series decaies slowly while the first difference shows a cutoff after lag 1. Thus a model ARIMA(0,1,1) and ARIMA(0,1,2) are suggested. 
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+fi1<-arima(xtlog,order=c(0,1,1),method="ML")
+fi2<-arima(xtlog,order=c(0,1,2),method="ML")
+print(paste("The root of ARIMA(0,1,1) is ",-fi1$coef[1],sep=""))
+te<-c(1,fi2$coef[1],fi2$coef[2])
+print(paste("The root of ARIMA(0,1,2) is ",polyroot(te)[1]," and ",polyroot(te)[2],sep=""))
+```
+So there is actually only the ARIMA(0,1,2) (see below) available for next step, because the root of the first suggested model has root inside unit circle. Since this is a essecially MA model, there is no problem of parameter redundancy. Please refer to the fitting analysis as below:
+\[ x_t=(1-0.0387B)(1-0.1458B)w_t\] \[ x_t=w_t-0.1845w_{t-1}+0.00564246w_{t-2}\]
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+sarima(xtlog,0,1,2)
+```
+As shown in the fitting results, AIC is -3.301397, and AICc of -3.301315, BIC of -3.269787, which are the common indexes for selecting models. The lower the better. And here comes the prediction band for the coming 20 values based on 95% confidence level.
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+pr<-arima(xtlog,order=c(0,1,2),seasonal=list(order=c(0,0,0),period=0),method="ML")
+xian<-predict(pr,n.ahead=20)
+ts.plot(xt,exp(xian$pred),col=1:2,type="p",main="Trend",Position="center")
+hi<-exp(xian$pred+2*xian$se);lo<-exp(xian$pred-2*xian$se)
+xx<-c(time(hi),rev(time(hi)));yy<-c(lo,rev(hi))
+polygon(xx,yy,border=8,col=gray(0.6,alpha=0.2))
+```
+
+## b)
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+##Assignment 3 b)
+xt<-ts(unemp)
+xtlog<-log(xt)
+print("Here is the time plot of original and log-form series:")
+par(mfrow=c(1,2))
+plot(xt,main="Unemp")  ##Time plot
+plot(xtlog,main="log(Unemp)")
+print("Since the series data has a large span, log transformation is suggested.")
+xtlogd<-diff(xtlog)
+par(mfrow=c(2,2),mar=c(4,4,3,2))
+acf(xtlog,lag.max=40)
+pacf(xtlog,lag.max=40)
+acf(xtlogd,lag.max=40)
+pacf(xtlogd,lag.max=40)
+```
+From the above plots of ACF and PACF, it is shown that ACF of original series decaies slowly while the first difference does not show an apparent cutoff in two plots. However a seasonal behaviour is detected. Thus a model $ARIMA(3,1,3)\times (1,1,1)_{12}$ and $ARIMA(4,1,4)\times (1,1,1)_{12}$ are suggested. 
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+fi1<-arima(xtlog,order=c(3,1,3),seasonal=list(order=c(1,1,1),freq=12),method="ML")
+te<-c(1,-fi1$coef[1],-fi1$coef[2])
+print(paste("The AR root of ARIMA(3,1,3)*(1,1,1)_12 is ",polyroot(te)[1]," and ",polyroot(te)[2],sep=""))
+te<-c(1,fi1$coef[3],fi1$coef[4])
+print(paste("The MA root of ARIMA(3,1,3)*(1,1,1)_12 is ",polyroot(te)[1]," and ",polyroot(te)[2],sep=""))
+fi2<-arima(xtlog,order=c(4,1,4),seasonal=list(order=c(1,1,1),freq=12),method="ML")
+te<-c(1,-fi2$coef[1],-fi2$coef[2])
+print(paste("The AR root of ARIMA(4,1,4)*(1,1,1)_12 is ",polyroot(te)[1]," and ",polyroot(te)[2],sep=""))
+te<-c(1,fi2$coef[3],fi2$coef[4])
+print(paste("The MA root of ARIMA(4,1,4)*(1,1,1)_12 is ",polyroot(te)[1]," and ",polyroot(te)[2],sep=""))
+```
+All the roots of two models are outside unit circle, so they are casual and invertible processes. Since there is no roots with the same values, there is no problem of parameter redundancy. Please refer to the fitting analysis as below:
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+print("Here comes the fitting results of the first model:")
+sarima(xtlog,3,1,3,1,1,1,12)
+print("Here comes the fitting results of the second model:")
+sarima(xtlog,4,1,4,1,1,1,12)
+```
+It shows the first model has higer AIC and AICc, while the second model has higer BIC. To some extent, it should be the second model that is better (see below). And here comes the prediction band for the coming 20 values based on 95% confidence level. \[(1-0.1332B^{12})(1-0.7248B)(1-0.2844B)(1-0.6717B)(1-0.8512B)\Delta_{12}\ \Delta x_t=(1-0.7468B~^{12})(1-0.6591B)(1-0.1638B)(1-0.7425B)(1+0.7823B)w_t\]
+
+```{r,eval=TRUE,echo=FALSE,warning=FALSE}
+pr<-arima(xtlog,order=c(4,1,4),seasonal=list(order=c(1,1,1),period=12),method="ML")
+xian<-predict(pr,n.ahead=20)
+ts.plot(xt,exp(xian$pred),col=1:2,type="p",main="Trend",Position="center")
+hi<-exp(xian$pred+2*xian$se);lo<-exp(xian$pred-2*xian$se)
+xx<-c(time(hi),rev(time(hi)));yy<-c(lo,rev(hi))
+polygon(xx,yy,border=8,col=gray(0.6,alpha=0.2))
+```
+
+
+
+
+
+# Code Appendix
+
+```{r code = readLines(knitr::purl("C:/Users/A550240/Desktop/LIU/TimeSeries/Task/LabB.Rmd", documentation = 1)), echo = T, eval = F}
+```

@@ -1,0 +1,168 @@
+---
+title: "Computer Lab C"
+subtitle: "Time Series Analysis -- 732A62"
+author: "Jun Li"
+date: '2019-10-08'
+output: pdf_document
+---
+
+# Assignment 1. Implementation of Kalman Filter
+## a) <!--example -->
+The state space model should be as follows:
+\[z_t=z_{t-1}+e_t\]
+\[x_t=z_t+v_t\]
+\[e \sim N(0,1)\]
+\[v \sim N(0,1)\]
+
+
+## b) <!--example -->
+
+```{r,eval=TRUE,echo=FALSE}
+## b)
+library(astsa)
+# generate data
+set.seed (1); num = 50
+w = rnorm (num+1,0,1); v = rnorm (num,0,1)
+mu = cumsum (w) # state : mu[0], mu[1] ,... , mu[50]
+y = mu[-1] + v # obs: y[1] ,... , y[50]
+# Moving average
+vy<-filter(y,filter=rep(0.2,5),method="convolution",sides=1)
+# filter and smooth ( Ksmooth0 does both )
+ks = Ksmooth0(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=1, cR=1)
+# start figure
+Time = 1:num
+plot (Time , mu[-1], main ='Filter ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xf)
+#lines (ks$xf+2* sqrt (ks$Pf), lty =2, col=4)
+#lines (ks$xf -2* sqrt (ks$Pf), lty =2, col=4)
+lines (vy,lty =2, col=4)
+```
+The blue dashline is result from moving average, which comparing with Kalman filter is a biased fitting, and Kalman filter gives a better fit.
+
+## c) <!--example -->
+
+```{r,eval=TRUE,echo=FALSE}
+## c)
+# filter and smooth ( Ksmooth0 does both )
+ks = Ksmooth0(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=1, cR=1)
+# Modified filter
+ksx = Ksmooth0(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=10, cR=0.1)
+# start figure
+par( mfrow =c(2,1));Time = 1:num
+plot (Time , mu[-1], main ='Filter ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xf)
+lines (ks$xf+2* sqrt (ks$Pf), lty =2, col=4)
+lines (ks$xf -2* sqrt (ks$Pf), lty =2, col=4)
+plot (Time , mu[-1], main ='Filter Modified', ylim =c(-5,10))
+lines (Time ,y,col=" red ")
+lines (ksx$xf)
+lines (ksx$xf+2* sqrt (ks$Pf), lty =2, col=4)
+lines (ksx$xf -2* sqrt (ks$Pf), lty =2, col=4)
+```
+The modified model with larger Q and small R presents a perfect fitting with original data.
+
+
+## d) <!--example -->
+
+```{r,eval=TRUE,echo=FALSE}
+## d)
+# filter and smooth ( Ksmooth0 does both )
+ks = Ksmooth0(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=1, cR=1)
+# Modified filter
+ksx = Ksmooth0(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=0.1, cR=10)
+# start figure
+par( mfrow =c(2,1));Time = 1:num
+plot (Time , mu[-1], main ='Filter ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xf)
+lines (ks$xf+2* sqrt (ks$Pf), lty =2, col=4)
+lines (ks$xf -2* sqrt (ks$Pf), lty =2, col=4)
+plot (Time , mu[-1], main ='Filter Modified', ylim =c(-5,10))
+lines (Time ,y,col=" red ")
+lines (ksx$xf)
+lines (ksx$xf+2* sqrt (ks$Pf), lty =2, col=4)
+lines (ksx$xf -2* sqrt (ks$Pf), lty =2, col=4)
+```
+The modified model with small Q and larger R presents a heavily biased fitting with original data.
+
+## e) <!--example -->
+
+```{r,eval=TRUE,echo=FALSE}
+## e)
+myfilter<-setRefClass("myfilter",
+  fields=list(num="numeric", y="vector", A="numeric", mu0="numeric", Sigma0="numeric", Phi="numeric", cQ="numeric", cR="numeric",xp="vector",xf="vector",xs="vector",Pp="vector",Pf="vector",Ps="vector"),
+  
+  methods=list(
+    initialize=function(num="numeric", y="vector", A="numeric", mu0="numeric", Sigma0="numeric", Phi="numeric", cQ="numeric", cR="numeric",xp="vector",xf="vector",xs="vector",Pp="vector",Pf="vector",Ps="vector"){
+      
+      
+      # Initialize
+      ci<-num+1
+      .self$xp<<-vector("numeric",ci);.self$xf<<-vector("numeric",ci);.self$xs<<-vector("numeric",ci)
+      .self$Pp<<-vector("numeric",ci);.self$Pf<<-vector("numeric",ci);.self$Ps<<-vector("numeric",ci)
+      .self$xp[1]<<-mu0;.self$xf[1]<<-mu0;.self$Pp[1]<<-Sigma0;.self$Pf[1]<<-Sigma0
+      
+
+      for(i in 2:ci){
+      # Predict
+      .self$xp[i]<<-Phi*.self$xf[i-1]
+      .self$Pp[i]<<-Phi*.self$Pf[i-1]*t(Phi)+cQ
+      # Filter
+      k<-.self$Pp[i]*t(A)/(A*.self$Pp[i]*t(A)+cR) 
+      .self$xf[i]<<-.self$xp[i]+k*(y[i-1]-A*.self$xp[i])
+      .self$Pf[i]<<-(1-k*A)*.self$Pp[i]}
+      
+      
+      # Smooth
+      .self$xs[ci]<<-.self$xf[ci];.self$Ps[ci]<<-.self$Pf[ci] 
+      for(i in num:2){
+      g<-.self$Pf[i]*t(Phi)/.self$Pp[i+1]
+      .self$xs[i]<<-.self$xf[i]+g*(.self$xs[i+1]-Phi*.self$xf[i])
+      .self$Ps[i]<<-.self$Pf[i]+g*(.self$Ps[i+1]-.self$Pp[i+1])*t(g)}
+    
+        
+      .self$xp<<-.self$xp[-1];.self$Pp<<-.self$Pp[-1]
+      .self$xs<<-.self$xs[-1];.self$Ps<<-.self$Ps[-1]
+      .self$xf<<-.self$xf[-1];.self$Pf<<-.self$Pf[-1]
+      }
+))
+
+
+# filter and smooth ( Ksmooth0 does both )
+ks<-myfilter$new(num , y, A=1, mu0=0, Sigma0=1, Phi=1, cQ=1, cR=1)
+
+# start figure
+par( mfrow =c(3,1)); Time = 1:num
+plot (Time , mu[-1], main ='Predict ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xp)
+lines (ks$xp+2* sqrt (ks$Pp), lty =2, col=4)
+lines (ks$xp -2* sqrt (ks$Pp), lty =2, col=4)
+
+plot (Time , mu[-1], main ='Filter ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xf)
+lines (ks$xf+2* sqrt (ks$Pf), lty =2, col=4)
+lines (ks$xf -2* sqrt (ks$Pf), lty =2, col=4)
+
+plot (Time , mu[-1], main ='Smooth ', ylim =c(-5,10))
+lines (Time ,y,col=" green ")
+lines (ks$xs)
+lines (ks$xs+2* sqrt (ks$Ps), lty =2, col=4)
+lines (ks$xs -2* sqrt (ks$Ps), lty =2, col=4)
+```
+The hand-written function of Kalman Filter seems work well as it shows the same plots.
+
+
+## f) <!--example -->
+Kalman gain denotes the magnitude of taking correction of observations into consideration. As the covariance of $v_t$ is in the denominator, the larger $R_t$ is the unaccurate observation is, which leads to that the state estimates should rely less on observations, and the vice versa.
+
+
+
+
+# Code Appendix
+
+```{r code = readLines(knitr::purl("C:/Users/A550240/Desktop/LIU/TimeSeries/Task/LabC.Rmd", documentation = 1)), echo = T, eval = F}
+```

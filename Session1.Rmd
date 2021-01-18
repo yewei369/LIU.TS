@@ -1,0 +1,87 @@
+---
+title: "Teaching Session 1 Assignments"
+subtitle: "Time Series Analysis -- 732A62"
+author: "Jun Li"
+date: '2019-09-21'
+output: pdf_document
+---
+
+# Assignment 12
+## a. mean and covariance function
+
+$E(y_{t})$=$E(\mu_{t}+\sigma_tx_t)$=$E(\mu_{t})+E(\sigma_tx_t)$=$\mu_t+\sigma_tE(x_t)$=$\mu_t+\sigma_t*0$=$\mu_t$
+
+$\gamma_y(h)$=$cov(y_{t+h},y_t)$=$E(y_{t+h}-E(y_{t+h}))(y_t-E(y_t))$=$E(y_{t+h}-\mu_{t+h})(y_t-\mu_t)$=$E(\mu_{t+h}+\sigma_{t+h}x_{t+h}-\mu_{t+h})(\mu_{t}+\sigma_tx_t-\mu_t)$=$E(\sigma_{t+h}x_{t+h}*\sigma_tx_t)$=$\sigma_{t+h}\sigma_tE(x_{t+h}*x_t)$=$\sigma_{t+h}\sigma_t*(Ex_{t+h}*Ex_t+cov(x_{t+h},x_t))$=$\sigma_{t+h}\sigma_t*(Ex_{t+h}*Ex_t+\rho(x_{t+h},x_t)*\sigma(x_{t+h})*\sigma(x_t))$=$\sigma_{t+h}\sigma_t*(Ex_{t+h}*Ex_t+\rho(x_{t+h},x_t)*\sigma(x_{t+h})*\sigma(x_t))$
+
+(since x_t is stationary series so its variance is constant, $\sigma(x_{t+h})*\sigma(x_t)$=$\sigma(x_t)^2$=1)
+
+=$\sigma_{t+h}\sigma_t*(0*0+\rho(x_{t+h},x_t)*1)$=$\sigma_{t+h}\sigma_t*\rho(h)$
+
+## b. ACF
+$\rho_y(h)$=$\frac{\gamma(h)}{\sigma_{t+h}\sigma_t}$=$\frac{\sigma_{t+h}\sigma_t*\rho(h)}{\sigma_{t+h}\sigma_t}$=$\rho(h)$
+
+which shows that the autocorrelation function is dependent only on time lag. However, since {$y_t$} has a mean function $\mu_t$ which is not a constant. So it is not stationary series.
+
+## c. stationay?
+Yes, it is possible when {$y_t$} has infinite variance according to the definition
+
+
+# Assignment 18
+## c
+the original equation is equivalent to:
+$$
+\begin{aligned}
+(1-3B)x_t=(1+2B-8B^2)w_t  \\
+(1-3B)x_t=(1+4B)(1-2B)w_t \\
+\end{aligned}
+$$
+So $p=1, q=2$
+
+roots for AR polynomial is $|z|=|1/3|<1$ , so it is not casual
+
+roots for MA polynomial is $|z_1|=|-1/4|<1, |z_2|=|1/2|<1$, so it is not invertible
+
+## d 
+the original equation is equivalent to:
+$$
+\begin{aligned}
+(1-2B+2B^2)x_t=(1-8/9B)w_t  \\
+(2B^2-2*\frac{1}{\sqrt{2}}*\sqrt{2}B+\frac{1}{2}+\frac{1}{2})x_t=(1-8/9B)w_t \\
+[(\sqrt{2}B-\frac{1}{\sqrt{2}})^2+\frac{1}{2}]x_t=(1-8/9B)w_t  \\
+\end{aligned}
+$$
+So $p=2, q=1$
+
+roots for AR polynomial is $|z|=|\frac{1}{2}\pm\frac{1}{2}i|=\frac{1}{\sqrt{2}}<1$ , so it is not casual
+
+roots for MA polynomial is $|z_1|=|9/8|>1$, so it is invertible
+
+## e
+the original equation is equivalent to:
+$$
+\begin{aligned}
+(1-4B)x_t=(1-B+0.5B^2)w_t  \\
+(1-4B)x_t=(0.5B^2-2*\frac{1}{\sqrt{2}}B*\frac{\sqrt{2}}{2}+\frac{1}{2}+\frac{1}{2})w_t \\
+(1-4B)x_t=[(\frac{1}{\sqrt{2}}B-\frac{1}{\sqrt{2}})^2+\frac{1}{2}]w_t  \\
+\end{aligned}
+$$
+So $p=1, q=2$
+
+roots for AR polynomial is $|z|=|1/4|<1$ , so it is not casual
+
+roots for MA polynomial is $|z_1|=|1\pm i|=\sqrt{2}>1$, so it is invertible
+
+## f
+the original equation is equivalent to:
+$$
+\begin{aligned}
+(1-\frac{9}{4}B-\frac{9}{4}B^2)x_t=w_t  \\
+(-\frac{9}{4}B^2-\frac{9}{4}B+1)x_t=w_t
+\end{aligned}
+$$
+So $p=2, q=0$
+
+roots for AR polynomial is $|z|=|\frac{-1*(-\frac{9}{4})\pm\sqrt{(-\frac{9}{4})^2-4*(-\frac{9}{4})*1}}{4*(-\frac{9}{4})}|=|\frac{\frac{9}{4}\pm\sqrt{\frac{225}{16}}}{-9}|=|-\frac{2}{3},\frac{1}{6}|<1$ , so it is not casual
+
+roots for MA polynomial is not applicable, and it is invertible as shown in the last equation
+
